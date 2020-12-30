@@ -1,0 +1,14 @@
+{
+	"name": "nix-ws",
+	"description": "pluto nix bot",
+	"author": {
+		"email": "meepdarknessmeep@gmail.com",
+		"name": "Meepen",
+		"url": "https://pluto.gg/"
+	},
+	"dependencies": {
+		"ws": "7.4.2",
+		"discord.js": "12.5.1",
+		"axios": "0.21.1"
+	}
+}
