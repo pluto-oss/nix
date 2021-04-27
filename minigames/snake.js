@@ -265,6 +265,7 @@ module.exports.SnakeMinigameApp = class SnakeMinigameApp extends NixHTTPApp {
 		for (let queue of this.queued) {
 			this.game.addSnake(queue.auth, queue);
 		}
+		this.queued = [];
 		this.game.once("gameend", () => setTimeout(() => this.createNewGame(), 5000));
 	}
 
