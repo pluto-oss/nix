@@ -135,10 +135,13 @@ class SnakeGame extends EventEmitter {
 
 			let old = this.board.get(x, y);
 
-			if (old) {if (old.what instanceof Snake) {
-					let collider = old.what;
+			if (old && old.what instanceof Snake) {
+				let collider = old.what;
 
-					// snake competition
+				// snake competition
+				let [lhx. lhy] = collider.lastHead || [-1, -1];
+				let [hx, hy] = collider.head;
+				if (lhx == snake.head.x && lhy == snake.head.y || hx == snake.head.x && hy == snake.head.y) {
 					if (collider.length == snake.length) { // both lose
 						this.killSnake(snake.auth);
 						this.killSnake(collider.auth);
@@ -153,6 +156,9 @@ class SnakeGame extends EventEmitter {
 							continue;
 						}
 					}
+				}
+				else {
+					this.killSnake(snake.auth);
 				}
 			}
 
