@@ -26,7 +26,6 @@ module.exports.GModClient = class GModClient extends EventEmitter {
 		catch (e) {
 			console.error(e);
 		}
-		console.log("client message:" + msg)
 	}
 
 	messageReceived(msg) {

@@ -115,6 +115,9 @@ class SnakeGame extends EventEmitter {
 
 			if (old && old.what == "food") {
 				snake.length++;
+				if (snake.length == this.board.size) {
+					snake.length++;
+				}
 			}
 
 			// remove outdated history from game board
@@ -151,6 +154,9 @@ class SnakeGame extends EventEmitter {
 						let loser = collider.length > snake.length ? snake : collider;
 						this.killSnake(loser.auth);
 						snake.length++;
+						if (snake.length == this.board.size) {
+							snake.length++;
+						}
 
 						if (loser == snake) {
 							continue;
@@ -221,7 +227,6 @@ class SnakeGame extends EventEmitter {
 		snake.id = snakeid;
 		snake.auth = id;
 		snake.info = info;
-		delete info.auth;
 		this.snakes[id] = snake;
 
 		this.board.set(snake.head[0], snake.head[1], {
@@ -269,9 +274,9 @@ module.exports.SnakeMinigameApp = class SnakeMinigameApp extends NixHTTPApp {
 		}
 
 		console.log("NEW SNAKE GAME");
-		this.game = new SnakeGame(5 + this.queued.length, 250);
+		this.game = new SnakeGame(5 + this.queued.length, 350);
 		for (let queue of this.queued) {
-			this.game.addSnake(queue.auth, queue);
+			this.game.addSnake(queue.auth, queue.info);
 		}
 		this.queued = [];
 		this.game.once("gameend", () => setTimeout(() => this.createNewGame(), 5000));
@@ -306,6 +311,7 @@ module.exports.SnakeMinigameApp = class SnakeMinigameApp extends NixHTTPApp {
 
 			this.queued.push({
 				steamid,
+				info: json,
 				auth
 			});
 
