@@ -276,7 +276,7 @@ module.exports.SnakeMinigameApp = class SnakeMinigameApp extends NixHTTPApp {
 			this.createNewGame()
 		}
 		else {
-			this.timeout = setTimeout(() => this.createNewGame(), 5000)
+			this.timeout = setTimeout(() => this.tryStartNewGame(), 5000)
 		}
 	}
 
