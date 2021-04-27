@@ -1,16 +1,37 @@
 const {GModClient} = require("./clients/gmodclient");
-const WebSocket = require("ws");
 const discord = require("discord.js");
 const config = require("./config");
 const {post} = require("axios");
+const {NixHTTPServer} = require("./http");
+const {SnakeMinigameApp} = require("./minigames/snake");
 
 class NixServer {
 	constructor() {
+		this.http = new NixHTTPServer(config.port);
+
 		this.discord = new discord.Client();
 		this.discord.on("ready", () => this.onDiscordReady());
 		this.discord.login(config.discord.token);
-		this.wss = new WebSocket.Server({port: config.port});
-		this.wss.on("connection", (ws, req) => this.onConnection(ws, req))
+		this.discord.on("message", msg => {
+			if (!msg.author || config.discord.admins.indexOf(msg.author.id) === -1) {
+				return;
+			}
+
+
+			if (msg.content.indexOf("nix ") === 0) {
+				let cmd = msg.content.slice("nix ".length);
+				if (cmd == "apps") {
+					let data = [];
+					for (let appid in this.http.apps) {
+						data.push(`${appid}: ${this.http.apps[appid].status()}`);
+					}
+					msg.reply("```\n" + data.join("\n") + "```");
+				}
+			}
+		})
+		this.http.app.ws("", (ws, req) => this.onConnection(ws, req));
+
+		this.http.apps["snake"] = new SnakeMinigameApp();
 
 		this.gmodclients = Object.create(null); // [name]: cl
 	}
@@ -21,7 +42,7 @@ class NixServer {
 				let json = JSON.parse(msg);
 				if (json && json.client_type === "gmod" && json.client_secret === config.secret && "client_name" in json) {
 					console.log("new client!");
-					let cl = new GModClient(ws, json);
+					let cl = new GModClient(ws, json, this.http);
 					cl.on("message", msg => this.onGModMessage(cl, msg))
 
 					this.gmodclients[json.client_name] = cl;
