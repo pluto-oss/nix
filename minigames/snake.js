@@ -211,6 +211,7 @@ class SnakeGame extends EventEmitter {
 			snake.direction = "left";
 		}
 		snake.id = snakeid;
+		snake.auth = id;
 		snake.info = info;
 		delete info.auth;
 		this.snakes[id] = snake;
