@@ -223,7 +223,7 @@ class SnakeGame extends EventEmitter {
 	addSnake(id, info) {
 		let snakeid = this.snakeid++;
 
-		let snake = new Snake(Math.floor(Math.random() * this.board.size), snakeid, 3);
+		let snake = new Snake(Math.floor(Math.random() * this.board.size), (snakeid * 2) % this.board.size, 3);
 		snake.id = snakeid;
 		snake.auth = id;
 		snake.info = info;
@@ -258,31 +258,48 @@ class SnakeGame extends EventEmitter {
 };
 
 module.exports.SnakeMinigameApp = class SnakeMinigameApp extends NixHTTPApp {
-	constructor() {
+	constructor(nix) {
 		super();
 
-		this.game = new SnakeGame(5, 1000);
-		setTimeout(() => this.createNewGame(), 5000)
+		this.nix = nix;
 
-		this.queued = [];
+		this.lobby = Object.create(null);
+		this.tryStartNewGame();
+	}
+
+	tryStartNewGame() {
+		if (this.timeout) {
+			clearTimeout(this.timeout);
+		}
+
+		if (Object.keys(this.lobby).length >= 1) {
+			this.createNewGame()
+		}
+		else {
+			this.timeout = setTimeout(() => this.createNewGame(), 5000)
+		}
 	}
 
 	createNewGame() {
-		if (this.queued.length === 0) {
-			setTimeout(() => this.createNewGame(), 5000);
-			return;
-		}
-
-		console.log("NEW SNAKE GAME");
-		this.game = new SnakeGame(5 + this.queued.length, 350);
-		for (let queue of this.queued) {
+		this.game = new SnakeGame(Math.max(5, Math.min(20, 2 * Object.keys(this.lobby).length)), 350);
+		for (let steamid in this.lobby) {
+			let queue = this.lobby[steamid];
 			this.game.addSnake(queue.auth, queue.info);
 		}
-		this.queued = [];
-		this.game.once("gameend", () => setTimeout(() => this.createNewGame(), 5000));
+
+		this.game.once("gameend", () => {
+			delete this.game;
+			this.timeout = setTimeout(() => {
+				this.tryStartNewGame();
+			}, 5000);
+		});
 	}
 
 	isAuthorized(authorization) {
+		if (!this.game) {
+			return false;
+		}
+
 		return !!this.game.snakes[authorization];
 	}
 
@@ -294,36 +311,49 @@ module.exports.SnakeMinigameApp = class SnakeMinigameApp extends NixHTTPApp {
 		return {};
 	}
 
-	handleMessage(json) {
+	handleMessage(json, ws) {
 		if (json.what == "add") {
 			let steamid = json.steamid;
-			for (let queued of this.queued) {
-				if (queued.steamid == steamid) {
-					return {
-						created: false,
-						info: json,
-						auth: queued.auth
-					};
-				}
+			if (this.lobby[steamid]) {
+				let queue = this.lobby[steamid];
+				return {
+					created: false,
+					info: queue.info,
+					auth: queue.auth
+				};
 			}
 
-			let auth = v1();
-
-			this.queued.push({
-				steamid,
+			let queue = {
 				info: json,
-				auth
+				auth: v1(),
+				socket: ws
+			}
+
+			ws.on("close", () => {
+				if (this.lobby[steamid] === ws) {
+					delete this.lobby[steamid];
+				}
 			});
 
+			this.lobby[steamid] = queue;
 			return {
 				created: true,
-				info: json,
-				auth
-			}
+				info: queue.info,
+				auth: queue.auth
+			};
+		}
+		else if (json.what == "delete") {
+			delete this.lobby[json.steamid];
 		}
 	}
 
 	handleGet(req, res) {
+		if (!this.game) {
+			return res.end(JSON.stringify({
+				waiting: true
+			}));
+		}
+
 		let data = {
 			snakes: [],
 			board: [],
@@ -371,6 +401,10 @@ module.exports.SnakeMinigameApp = class SnakeMinigameApp extends NixHTTPApp {
 	}
 
 	status() {
+		if (!this.game) {
+			return `Waiting for players...`;
+		}
+
 		let alive = 0;
 		for (let id in this.game.snakes) {
 			let snake = this.game.snakes[id]

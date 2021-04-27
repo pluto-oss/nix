@@ -31,9 +31,16 @@ class NixServer {
 		})
 		this.http.app.ws("", (ws, req) => this.onConnection(ws, req));
 
-		this.http.apps["snake"] = new SnakeMinigameApp();
+		this.http.apps["snake"] = new SnakeMinigameApp(this);
 
 		this.gmodclients = Object.create(null); // [name]: cl
+	}
+
+	broadcastMessage(message) {
+		for (let id in this.gmodclients) {
+			let cl = this.gmodclients[id];
+			cl.send(JSON.stringify(message));
+		}
 	}
 
 	onConnection(ws, req) {

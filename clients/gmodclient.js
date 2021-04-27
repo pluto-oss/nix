@@ -19,7 +19,7 @@ module.exports.GModClient = class GModClient extends EventEmitter {
 			else if (json.type == "snake") {
 				this.ws.send(JSON.stringify({
 					type: "snake",
-					response: this.app.apps.snake.handleMessage(json)
+					response: this.app.apps.snake.handleMessage(json, this.ws)
 				}));
 			}
 		}
