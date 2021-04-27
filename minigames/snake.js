@@ -180,6 +180,10 @@ class SnakeGame extends EventEmitter {
 
 		while (snake.history.length != 0) {
 			let [x, y] = snake.history.shift();
+			let boardData = this.board.get(x, y);
+			if (!boardData || boardData.what !== snake) {
+				continue;
+			}
 			this.board.set(x, y, {
 				what: "food"
 			});
