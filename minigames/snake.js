@@ -159,6 +159,7 @@ class SnakeGame extends EventEmitter {
 				}
 				else {
 					this.killSnake(snake.auth);
+					continue;
 				}
 			}
 
