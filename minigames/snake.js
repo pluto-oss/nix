@@ -211,9 +211,6 @@ class SnakeGame extends EventEmitter {
 		let snakeid = this.snakeid++;
 
 		let snake = new Snake(snakeid, Math.floor(Math.random() * this.board.size), 3);
-		if (snakeid == 1) {
-			snake.direction = "left";
-		}
 		snake.id = snakeid;
 		snake.auth = id;
 		snake.info = info;
@@ -265,7 +262,7 @@ module.exports.SnakeMinigameApp = class SnakeMinigameApp extends NixHTTPApp {
 		}
 
 		console.log("NEW SNAKE GAME");
-		this.game = new SnakeGame(Math.max(this.queued.length, 5), 500);
+		this.game = new SnakeGame(5 + this.queued.length, 500);
 		for (let queue of this.queued) {
 			this.game.addSnake(queue.auth, queue);
 		}
