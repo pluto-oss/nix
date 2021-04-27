@@ -217,7 +217,7 @@ class SnakeGame extends EventEmitter {
 	addSnake(id, info) {
 		let snakeid = this.snakeid++;
 
-		let snake = new Snake(snakeid, Math.floor(Math.random() * this.board.size), 3);
+		let snake = new Snake(Math.floor(Math.random() * this.board.size), snakeid, 3);
 		snake.id = snakeid;
 		snake.auth = id;
 		snake.info = info;
