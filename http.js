@@ -1,5 +1,6 @@
 const express = require("express");
 const expressWs = require("express-ws");
+const {EventEmitter} = require("events");
 
 module.exports.NixHTTPApp = class NixHTTPApp {
 	constructor() {
@@ -32,8 +33,9 @@ module.exports.NixHTTPApp = class NixHTTPApp {
 	}
 }
 
-module.exports.NixHTTPServer = class NixHTTPServer {
-	constructor(port) {
+module.exports.NixHTTPServer = class NixHTTPServer extends EventEmitter {
+	constructor(port, nix) {
+		super();
 		this.requests = {
 			handled: 0,
 			gotten: 0,
@@ -50,10 +52,13 @@ module.exports.NixHTTPServer = class NixHTTPServer {
 		}));
 		this.app.post('/app/:appid/:auth', this.appValidator.bind(this), this.authorizationHandler.bind(this), this.postHandler.bind(this));
 		this.app.get('/app/:appid', this.appValidator.bind(this), this.getHandler.bind(this));
+		this.app.get("/mapconfig.json", (req, res) => {
+			res.end(JSON.stringify(nix.mapConfig));
+		});
 
 		this.app.listen(port, () => {
 			console.log(`NixHTTPServer listening on port ${port}`);
-		})
+		});
 	}
 
 	resultData(status, data) {

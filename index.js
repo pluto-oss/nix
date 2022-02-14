@@ -4,10 +4,20 @@ const config = require("./config");
 const {post} = require("axios");
 const {NixHTTPServer} = require("./http");
 const {SnakeMinigameApp} = require("./minigames/snake");
+const {readFileSync, writeFileSync} = require("fs");
+
 
 class NixServer {
 	constructor() {
-		this.http = new NixHTTPServer(config.port);
+		this.http = new NixHTTPServer(config.port, this);
+
+		try {
+			this.mapConfig = JSON.parse(readFileSync("map.json", "ascii"));
+		}
+		catch (e) {
+			this.mapConfig = {};
+			this.saveMapConfig();
+		}
 
 		this.discord = new discord.Client();
 		this.discord.on("ready", () => this.onDiscordReady());
@@ -17,15 +27,39 @@ class NixServer {
 				return;
 			}
 
-
 			if (msg.content.indexOf("nix ") === 0) {
-				let cmd = msg.content.slice("nix ".length);
+				let [_, cmd, arg] = msg.content.slice("nix ".length).match(/^([^ ]+) ?(.*)$/)
 				if (cmd == "apps") {
 					let data = [];
 					for (let appid in this.http.apps) {
 						data.push(`${appid}: ${this.http.apps[appid].status()}`);
 					}
 					msg.reply("```\n" + data.join("\n") + "```");
+				}
+				else if (cmd == "addmap") {
+					let [_, mapname, workshopid] = arg.match(/^([^ ]+) (\d+)$/);
+
+					if (!mapname) {
+						msg.reply("Incorrect arguments, arguments are: mapname workshop");
+						return;
+					}
+
+					this.mapConfig[mapname] = workshopid;
+					this.saveMapConfig();
+					msg.reply(`Set ${mapname} to ${workshopid}`);
+				}
+				else if (cmd == "disablemap") {
+					this.mapConfig[arg.trim()] = false;
+					this.saveMapConfig();
+					msg.reply(`${arg} has been disabled`);
+				}
+				else if (cmd == "deletemap") {
+					delete this.mapConfig[arg.trim()];
+					this.saveMapConfig();
+					msg.reply(`${arg} deleted`);
+				}
+				else if (cmd == "mapconfig") {
+					msg.reply(`${config.base_url}/mapconfig.json`);
 				}
 			}
 		})
@@ -34,6 +68,21 @@ class NixServer {
 		this.http.apps["snake"] = new SnakeMinigameApp(this);
 
 		this.gmodclients = Object.create(null); // [name]: cl
+	}
+
+	saveMapConfig() {
+		writeFileSync("map.json", JSON.stringify(this.mapConfig));
+
+		for (let client_name in this.gmodclients) {
+			this.sendMapConfig(this.gmodclients[client_name]);
+		}
+	}
+
+	sendMapConfig(cl) {
+		cl.send(JSON.stringify({
+			"type": "map",
+			"response": this.mapConfig
+		}));
 	}
 
 	broadcastMessage(message) {
@@ -47,10 +96,14 @@ class NixServer {
 		ws.once("message", msg => {
 			try {
 				let json = JSON.parse(msg);
-				if (json && json.client_type === "gmod" && json.client_secret === config.secret && "client_name" in json) {
-					console.log("new client!");
-					let cl = new GModClient(ws, json, this.http);
+				if (!json || json.client_secret !== config.secret || !("client_name" in json)) {
+					return;
+				}
+				console.log("new client!");
+				if (json.client_type === "gmod") {
+					let cl = new GModClient(ws, json, this.http, this);
 					cl.on("message", msg => this.onGModMessage(cl, msg))
+					cl.on("mapRequest", cl => this.sendMapConfig(cl));
 
 					this.gmodclients[json.client_name] = cl;
 					cl.id = json.client_name;
@@ -59,7 +112,7 @@ class NixServer {
 			catch (e) {
 				ws.close();
 			}
-		})
+		});
 	}
 
 	onGModMessage(cl, json) {
